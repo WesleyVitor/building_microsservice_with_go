@@ -1,57 +1,43 @@
 package main
 
 import (
-	"context"
+	"fmt"
+	"io"
 	"log"
 	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
-
-	"github.com/WesleyVitor/handlers"
 )
 
 func main(){
-	l := log.New(os.Stdout, "product-api#", log.LstdFlags)
 
-	
-	helloHandler := handlers.NewHello(l)
-	goodbyeHandler := handlers.NewGoodBye(l)
 
-	routes := http.NewServeMux()
-	routes.Handle("/",helloHandler)
-	routes.Handle("/goodbye", goodbyeHandler)
+	http.HandleFunc("/goodbye", func(w http.ResponseWriter, r *http.Request){
+		log.Println("Running Goodbye Handle")
 
-	server := &http.Server{
-		Addr: ":9000",
-		Handler: routes,
-		IdleTimeout: 150 * time.Second,
-		ReadTimeout: 1 * time.Second,
-		WriteTimeout: 1 * time.Second,
-	}
-
-	go func(){
-		err := server.ListenAndServe()
-		if err != nil{
-			l.Println(err)
+		content, err := io.ReadAll(r.Body)
+		if err != nil {
+			http.Error(w, "Error reading request body", http.StatusBadRequest)
+			return
 		}
-	}()
 
-	sigChan := make(chan os.Signal,1)
-	signal.Notify(sigChan, os.Interrupt)
-	signal.Notify(sigChan, syscall.SIGTERM)
+		fmt.Fprintf(w, "Goodbye %s!", content)
+	})
+
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request){
+		log.Println("Running Hello Handle")
+
+		content, err := io.ReadAll(r.Body)
+		if err != nil {
+			http.Error(w, "Error reading request body", http.StatusBadRequest)
+			return
+		}
+
+
+		fmt.Fprintf(w, "Hello, %s!", content)
 	
-	sig :=<- sigChan
-	l.Printf("\nReceive terminated, graceful shutdown %s\n",sig)
-	ctx,cancel := context.WithTimeout(context.Background(), 5 * time.Second)
-	defer func ()  {
-		l.Printf("Terminar db")
-		cancel()
-	}()
-	server.Shutdown(ctx)
+	})
 
+	log.Println("Server started on: http://localhost:9090")
 
-
+	http.ListenAndServe(":9090", nil)
 
 }
