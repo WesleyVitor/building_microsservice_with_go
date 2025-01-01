@@ -9,19 +9,25 @@ import (
 	"time"
 
 	"github.com/WesleyVitor/handlers"
+	"github.com/gorilla/mux"
 )
 
 func main(){
 
-
-	hello_handler := handlers.NewHello()
-	goodbye_handler := handlers.NewGoodbye()
 	product_handler := handlers.NewProducts()
 
-	sm := http.NewServeMux()
-	sm.Handle("/", hello_handler)
-	sm.Handle("/goodbye", goodbye_handler)
-	sm.Handle("/products", product_handler)
+	sm := mux.NewRouter()
+
+	getRouter := sm.Methods(http.MethodGet).Subrouter()
+	getRouter.HandleFunc("/products", product_handler.GetProducts)
+	
+	putRouter := sm.Methods(http.MethodPut).Subrouter()
+	putRouter.HandleFunc("/products/{id:[0-9]+}", product_handler.UpdateProduct)	
+	putRouter.Use(product_handler.MiddlewareProductValidation)
+
+	postRouter := sm.Methods(http.MethodPost).Subrouter()
+	postRouter.HandleFunc("/products", product_handler.AddProduct)
+	postRouter.Use(product_handler.MiddlewareProductValidation)
 
 	server := http.Server{
 		Addr:         ":9090",      // configure the bind address
