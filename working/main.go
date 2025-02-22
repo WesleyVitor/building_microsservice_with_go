@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/WesleyVitor/handlers"
+	gohandlers "github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 )
 
@@ -28,10 +29,12 @@ func main(){
 	postRouter := sm.Methods(http.MethodPost).Subrouter()
 	postRouter.HandleFunc("/products", product_handler.AddProduct)
 	postRouter.Use(product_handler.MiddlewareProductValidation)
+	
+	ch := gohandlers.CORS(gohandlers.AllowedOrigins([]string{"*"}))
 
 	server := http.Server{
 		Addr:         ":9090",      // configure the bind address
-		Handler:      sm,                // set the default handler
+		Handler:      ch(sm),       // set the default handler
 		ReadTimeout:  5 * time.Second,   // max time to read request from the client
 		WriteTimeout: 10 * time.Second,  // max time to write response to the client
 		IdleTimeout:  120 * time.Second, // max time for connections using TCP Keep-Alive
@@ -42,7 +45,7 @@ func main(){
 		err := server.ListenAndServe()
 		if err != nil {
 			log.Fatalf("Error starting server: %s\n", err)
-			os.Exit(1)
+			os.Exit(1) // Return os.Interrupt
 		}
 	}()
 	
